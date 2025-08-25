@@ -140,6 +140,12 @@ body {
   background-color: #6b7280;
 }
 
+.connection-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .connect-btn {
   width: 100%;
   padding: 8px 16px;
@@ -154,6 +160,15 @@ body {
 
 .connect-btn:hover {
   background: #505050;
+}
+
+.connect-btn.alt {
+  background: #0084ff;
+  font-size: 11px;
+}
+
+.connect-btn.alt:hover {
+  background: #0070dd;
 }
 
 /* Main Content */

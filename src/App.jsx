@@ -33,14 +33,18 @@ function App() {
   // Connect to WebSocket
   const connectWebSocket = () => {
     try {
-      const websocket = new WebSocket('ws://0.0.0.0:8002/halo/ws/1')
+      // Try localhost first, then 0.0.0.0 as fallback
+      const wsUrl = 'ws://localhost:8002/halo/ws/1'
+      console.log('Attempting to connect to:', wsUrl)
+      const websocket = new WebSocket(wsUrl)
       
       websocket.onopen = () => {
         setConnectionStatus('connected')
-        console.log('WebSocket connected')
+        console.log('WebSocket connected successfully to:', wsUrl)
       }
       
       websocket.onmessage = (event) => {
+        console.log('Received message:', event.data)
         try {
           const response = JSON.parse(event.data)
           addMessage('assistant', response.message || event.data)
@@ -53,18 +57,60 @@ function App() {
       
       websocket.onclose = () => {
         setConnectionStatus('disconnected')
-        console.log('WebSocket disconnected')
+        console.log('WebSocket disconnected from:', wsUrl)
       }
       
       websocket.onerror = (error) => {
         setConnectionStatus('error')
-        console.error('WebSocket error:', error)
+        console.error('WebSocket error connecting to:', wsUrl, error)
         setIsLoading(false)
       }
       
       setWs(websocket)
     } catch (error) {
-      console.error('Failed to connect:', error)
+      console.error('Failed to create WebSocket connection:', error)
+      setConnectionStatus('error')
+    }
+  }
+  
+  // Alternative connection method
+  const connectWebSocketAlternative = () => {
+    try {
+      const wsUrl = 'ws://0.0.0.0:8002/halo/ws/1'
+      console.log('Attempting alternative connection to:', wsUrl)
+      const websocket = new WebSocket(wsUrl)
+      
+      websocket.onopen = () => {
+        setConnectionStatus('connected')
+        console.log('WebSocket connected successfully to:', wsUrl)
+      }
+      
+      websocket.onmessage = (event) => {
+        console.log('Received message:', event.data)
+        try {
+          const response = JSON.parse(event.data)
+          addMessage('assistant', response.message || event.data)
+          setIsLoading(false)
+        } catch (error) {
+          addMessage('assistant', event.data)
+          setIsLoading(false)
+        }
+      }
+      
+      websocket.onclose = () => {
+        setConnectionStatus('disconnected')
+        console.log('WebSocket disconnected from:', wsUrl)
+      }
+      
+      websocket.onerror = (error) => {
+        setConnectionStatus('error')
+        console.error('WebSocket error connecting to:', wsUrl, error)
+        setIsLoading(false)
+      }
+      
+      setWs(websocket)
+    } catch (error) {
+      console.error('Failed to create alternative WebSocket connection:', error)
       setConnectionStatus('error')
     }
   }
@@ -144,6 +190,7 @@ function App() {
       question: inputMessage
     }
     
+    console.log('Sending payload:', payload)
     // Send to WebSocket
     ws.send(JSON.stringify(payload))
     setIsLoading(true)
@@ -219,12 +266,22 @@ function App() {
              connectionStatus === 'connecting' ? 'Connecting...' : 
              connectionStatus === 'error' ? 'Error' : 'Disconnected'}
           </div>
-          <button 
-            className="connect-btn"
-            onClick={connectionStatus === 'connected' ? disconnectWebSocket : connectWebSocket}
-          >
-            {connectionStatus === 'connected' ? 'Disconnect' : 'Connect'}
-          </button>
+          <div className="connection-buttons">
+            <button 
+              className="connect-btn"
+              onClick={connectionStatus === 'connected' ? disconnectWebSocket : connectWebSocket}
+            >
+              {connectionStatus === 'connected' ? 'Disconnect' : 'Connect (localhost)'}
+            </button>
+            {connectionStatus !== 'connected' && (
+              <button 
+                className="connect-btn alt"
+                onClick={connectWebSocketAlternative}
+              >
+                Try 0.0.0.0
+              </button>
+            )}
+          </div>
         </div>
       </div>
       
