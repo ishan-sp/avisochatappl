@@ -261,44 +261,7 @@ function App() {
         
         <div className="sidebar-footer">
           <div className={`connection-status ${connectionStatus}`}>
-              <div key={message.id} className={`message ${message.sender} ${message.type || 'message'}`}>
             {connectionStatus === 'connected' ? 'Connected' : 
-                  <div className="message-text">
-                    {message.sender === 'assistant' ? (
-                      <div className="formatted-response">
-                        {message.content.split('\n').map((paragraph, index) => {
-                          if (paragraph.trim() === '') return <br key={index} />
-                          
-                          // Handle numbered lists
-                          if (/^\d+\./.test(paragraph.trim())) {
-                            return (
-                              <div key={index} className="numbered-item">
-                                {paragraph.trim()}
-                              </div>
-                            )
-                          }
-                          
-                          // Handle bullet points
-                          if (paragraph.trim().startsWith('- ') || paragraph.trim().startsWith('• ')) {
-                            return (
-                              <div key={index} className="bullet-item">
-                                {paragraph.trim()}
-                              </div>
-                            )
-                          }
-                          
-                          // Handle bold text with **
-                          const formattedText = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          
-                          return (
-                            <p key={index} dangerouslySetInnerHTML={{ __html: formattedText }} />
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      message.content
-                    )}
-                  </div>
              connectionStatus === 'error' ? 'Error' : 'Disconnected'}
           </div>
           <div className="connection-buttons">
@@ -401,9 +364,44 @@ function App() {
           ) : (
             <div className="messages">
               {currentMessages.map(message => (
-                <div key={message.id} className={`message ${message.sender}`}>
+                <div key={message.id} className={`message ${message.sender} ${message.type || 'message'}`}>
                   <div className="message-content">
-                    <div className="message-text">{message.content}</div>
+                    <div className="message-text">
+                      {message.sender === 'assistant' ? (
+                        <div className="formatted-response">
+                          {message.content.split('\n').map((paragraph, index) => {
+                            if (paragraph.trim() === '') return <br key={index} />
+                            
+                            // Handle numbered lists
+                            if (/^\d+\./.test(paragraph.trim())) {
+                              return (
+                                <div key={index} className="numbered-item">
+                                  {paragraph.trim()}
+                                </div>
+                              )
+                            }
+                            
+                            // Handle bullet points
+                            if (paragraph.trim().startsWith('- ') || paragraph.trim().startsWith('• ')) {
+                              return (
+                                <div key={index} className="bullet-item">
+                                  {paragraph.trim()}
+                                </div>
+                              )
+                            }
+                            
+                            // Handle bold text with **
+                            const formattedText = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            
+                            return (
+                              <p key={index} dangerouslySetInnerHTML={{ __html: formattedText }} />
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        message.content
+                      )}
+                    </div>
                     <div className="message-time">
                       {message.timestamp.toLocaleTimeString()}
                     </div>
