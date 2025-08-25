@@ -5,7 +5,8 @@ function App() {
   // WebSocket connection
   const [ws, setWs] = useState(null)
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
-  const [pingTimestamp, setPingTimestamp] = useState(null) // State to store the last ping timestamp
+  const [pingTimestamp, setPingTimestamp] = useState(null)
+  const reconnectTimeoutRef = useRef(null)
 
   // Chat state
   const [chats, setChats] = useState([])
@@ -33,15 +34,24 @@ function App() {
 
   // Connect to WebSocket
   const connectWebSocket = () => {
+    // Clear any existing connection
+    if (ws) {
+      ws.close()
+    }
+
     try {
-      // Try localhost first, then 0.0.0.0 as fallback
-      const wsUrl = 'ws://localhost:8002/halo/ws/1'
+      const wsUrl = 'ws://0.0.0.0:8002/halo/ws/1'
       console.log('Attempting to connect to:', wsUrl)
       const websocket = new WebSocket(wsUrl)
 
       websocket.onopen = () => {
         setConnectionStatus('connected')
         console.log('WebSocket connected successfully to:', wsUrl)
+        // Clear any reconnection timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current)
+          reconnectTimeoutRef.current = null
+        }
       }
 
       websocket.onmessage = (event) => {
@@ -51,7 +61,6 @@ function App() {
 
           // Handle ping messages - don't add to chat
           if (response.type === 'ping') {
-            // Just update ping timestamp in state for display
             setPingTimestamp(new Date(response.timestamp * 1000).toLocaleTimeString())
             return
           }
@@ -69,9 +78,18 @@ function App() {
         }
       }
 
-      websocket.onclose = () => {
+      websocket.onclose = (event) => {
         setConnectionStatus('disconnected')
-        console.log('WebSocket disconnected from:', wsUrl)
+        console.log('WebSocket disconnected from:', wsUrl, 'Code:', event.code, 'Reason:', event.reason)
+        
+        // Don't auto-reconnect if it was a manual disconnect
+        if (event.code !== 1000) {
+          // Attempt to reconnect after 3 seconds
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('Attempting to reconnect...')
+            connectWebSocket()
+          }, 3000)
+        }
       }
 
       websocket.onerror = (error) => {
@@ -87,65 +105,14 @@ function App() {
     }
   }
 
-  // Alternative connection method
-  const connectWebSocketAlternative = () => {
-    try {
-      const wsUrl = 'ws://0.0.0.0:8002/halo/ws/1'
-      console.log('Attempting alternative connection to:', wsUrl)
-      const websocket = new WebSocket(wsUrl)
-
-      websocket.onopen = () => {
-        setConnectionStatus('connected')
-        console.log('WebSocket connected successfully to:', wsUrl)
-      }
-
-      websocket.onmessage = (event) => {
-        console.log('Received message:', event.data)
-        try {
-          const response = JSON.parse(event.data)
-
-          // Handle ping messages - don't add to chat
-          if (response.type === 'ping') {
-            // Just update ping timestamp in state for display
-            setPingTimestamp(new Date(response.timestamp * 1000).toLocaleTimeString())
-            return
-          }
-
-          // Handle regular responses
-          if (response.status === 'success' && response.answer) {
-            addMessage('assistant', response.answer, 'success')
-          } else {
-            addMessage('assistant', response.message || event.data)
-          }
-          setIsLoading(false)
-        } catch (error) {
-          addMessage('assistant', event.data)
-          setIsLoading(false)
-        }
-      }
-
-      websocket.onclose = () => {
-        setConnectionStatus('disconnected')
-        console.log('WebSocket disconnected from:', wsUrl)
-      }
-
-      websocket.onerror = (error) => {
-        setConnectionStatus('error')
-        console.error('WebSocket error connecting to:', wsUrl, error)
-        setIsLoading(false)
-      }
-
-      setWs(websocket)
-    } catch (error) {
-      console.error('Failed to create alternative WebSocket connection:', error)
-      setConnectionStatus('error')
-    }
-  }
-
   // Disconnect WebSocket
   const disconnectWebSocket = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
     if (ws) {
-      ws.close()
+      ws.close(1000, 'Manual disconnect') // Use normal closure code
       setWs(null)
     }
   }
@@ -249,7 +216,12 @@ function App() {
   // Auto-connect on mount
   useEffect(() => {
     connectWebSocket()
-    return () => disconnectWebSocket()
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+      }
+      disconnectWebSocket()
+    }
   }, [])
 
   return (
@@ -288,30 +260,18 @@ function App() {
         </div>
 
         <div className="sidebar-footer">
-          <div className="ping-indicator">
-            {pingTimestamp && (
-              <>Last Ping: {pingTimestamp}</>
-            )}
-          </div>
           <div className={`connection-status ${connectionStatus}`}>
+            <div className="status-dot"></div>
             {connectionStatus === 'connected' ? 'Connected' :
-             connectionStatus === 'error' ? 'Error' : 'Disconnected'}
+             connectionStatus === 'error' ? 'Connection Error' : 'Disconnected'}
           </div>
           <div className="connection-buttons">
             <button
               className="connect-btn"
               onClick={connectionStatus === 'connected' ? disconnectWebSocket : connectWebSocket}
             >
-              {connectionStatus === 'connected' ? 'Disconnect' : 'Connect (localhost)'}
+              {connectionStatus === 'connected' ? 'Disconnect' : 'Connect'}
             </button>
-            {connectionStatus !== 'connected' && (
-              <button
-                className="connect-btn alt"
-                onClick={connectWebSocketAlternative}
-              >
-                Try 0.0.0.0
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -326,6 +286,12 @@ function App() {
             ☰
           </button>
           <h1>Halo Chat</h1>
+          {pingTimestamp && (
+            <div className="ping-indicator">
+              <div className="ping-dot"></div>
+              <span className="ping-text">Last ping: {pingTimestamp}</span>
+            </div>
+          )}
         </header>
 
         {/* Settings Panel */}
@@ -407,19 +373,17 @@ function App() {
 
                             // Handle numbered lists
                             if (/^\d+\./.test(paragraph.trim())) {
+                              const formattedText = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                               return (
-                                <div key={index} className="numbered-item">
-                                  {paragraph.trim()}
-                                </div>
+                                <div key={index} className="numbered-item" dangerouslySetInnerHTML={{ __html: formattedText }} />
                               )
                             }
 
                             // Handle bullet points
                             if (paragraph.trim().startsWith('- ') || paragraph.trim().startsWith('• ')) {
+                              const formattedText = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                               return (
-                                <div key={index} className="bullet-item">
-                                  {paragraph.trim()}
-                                </div>
+                                <div key={index} className="bullet-item" dangerouslySetInnerHTML={{ __html: formattedText }} />
                               )
                             }
 
