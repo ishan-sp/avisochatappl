@@ -52,27 +52,20 @@ function App() {
   // Connect to WebSocket
   const connectWebSocket = () => {
     // Clear any existing connection
-    if (ws) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
       ws.close()
     }
 
     try {
-      // Try multiple possible WebSocket URLs
-      const possibleUrls = [
-        'ws://localhost:8002/halo/ws/1',
-        'ws://127.0.0.1:8002/halo/ws/1',
-        'ws://0.0.0.0:8002/halo/ws/1'
-      ]
-      
-      const wsUrl = possibleUrls[0] // Start with localhost
-      console.log('Attempting to connect to:', wsUrl)
+      const wsUrl = 'ws://localhost:8002/halo/ws/1'
+      console.log('Connecting to:', wsUrl)
       setConnectionStatus('connecting')
       
       const websocket = new WebSocket(wsUrl)
 
       websocket.onopen = () => {
         setConnectionStatus('connected')
-        console.log('WebSocket connected successfully to:', wsUrl)
+        console.log('WebSocket connected successfully')
         // Clear any reconnection timeout
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current)
@@ -109,11 +102,11 @@ function App() {
 
       websocket.onclose = (event) => {
         setConnectionStatus('disconnected')
-        console.log('WebSocket disconnected from:', wsUrl, 'Code:', event.code, 'Reason:', event.reason)
+        console.log('WebSocket disconnected. Code:', event.code, 'Reason:', event.reason)
+        setIsLoading(false)
         
-        // Don't auto-reconnect if it was a manual disconnect
+        // Auto-reconnect if not a manual disconnect
         if (event.code !== 1000 && event.code !== 1001) {
-          // Attempt to reconnect after 3 seconds
           reconnectTimeoutRef.current = setTimeout(() => {
             console.log('Attempting to reconnect...')
             connectWebSocket()
@@ -123,7 +116,7 @@ function App() {
 
       websocket.onerror = (error) => {
         setConnectionStatus('error')
-        console.error('WebSocket error connecting to:', wsUrl, error)
+        console.error('WebSocket error:', error)
         setIsLoading(false)
       }
 
@@ -141,7 +134,7 @@ function App() {
       reconnectTimeoutRef.current = null
     }
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.close(1000, 'Manual disconnect') // Use normal closure code
+      ws.close(1000, 'Manual disconnect')
       setWs(null)
     }
   }
@@ -177,7 +170,7 @@ function App() {
       sender,
       content,
       timestamp: new Date(),
-      status: status // Add status for styling (e.g., 'success')
+      status: status
     }
 
     setCurrentMessages(prev => [...prev, message])
@@ -215,7 +208,7 @@ function App() {
     }
 
     console.log('Sending payload:', payload)
-    // Send to WebSocket
+    
     try {
       ws.send(JSON.stringify(payload))
       setIsLoading(true)
