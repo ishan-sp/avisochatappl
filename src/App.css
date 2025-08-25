@@ -305,6 +305,11 @@ body {
   justify-content: flex-start;
 }
 
+.message.system {
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
 .message-content {
   max-width: 70%;
   padding: 16px 20px;
@@ -324,10 +329,67 @@ body {
   color: #ffffff;
 }
 
+.message.system .message-content {
+  background: transparent;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  opacity: 0.6;
+  max-width: 90%;
+  text-align: center;
+}
+
+.message.system .message-text {
+  font-style: italic;
+  color: #888888;
+}
+
+.message.system .message-time {
+  display: none;
+}
+
 .message-text {
   line-height: 1.5;
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+/* Formatted response styling */
+.formatted-response {
+  line-height: 1.6;
+}
+
+.formatted-response p {
+  margin-bottom: 12px;
+}
+
+.formatted-response p:last-child {
+  margin-bottom: 0;
+}
+
+.numbered-item {
+  margin-bottom: 8px;
+  padding-left: 8px;
+}
+
+.bullet-item {
+  margin-bottom: 6px;
+  padding-left: 16px;
+  position: relative;
+}
+
+.bullet-item::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #0084ff;
+  font-weight: bold;
+}
+
+.formatted-response strong {
+  font-weight: 600;
+  color: #ffffff;
 }
 
 .message-time {
