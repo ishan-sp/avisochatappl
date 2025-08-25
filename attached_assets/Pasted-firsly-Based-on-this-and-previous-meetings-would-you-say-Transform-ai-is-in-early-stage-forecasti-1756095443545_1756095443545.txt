@@ -1,0 +1,18 @@
+firsly
+"Based on this and previous meetings, would you say Transform.ai is in early-stage forecasting maturity or mid-stage?
+09:32:31
+{"type":"ping","timestamp":1756094553.1231833}
+09:32:33
+{"type":"ping","timestamp":1756094553.1231833}
+09:32:33
+
+
+these pings are messages but it should be dispolayed very subtly not as messages in smaller font subtly 
+and the answer will be in this format 
+{
+"status": "success",
+"type": "ask_anything",
+"answer": "Based on the information provided, Transform.ai appears to be in the early-stage of forecasting maturity. Here are the reasons supporting this assessment:\n\n1. Forecast Accuracy Concerns: The CFO's concern about forecast accuracy indicates that the company is still working on refining its forecasting processes to achieve more reliable results.\n\n2. Manual Data Integration: The RevOps team is manually stitching together data from multiple sources like Salesforce, HubSpot, and spreadsheets. This manual process suggests a lack of integrated systems and automation, which are typically characteristics of early-stage forecasting maturity.\n\n3. Significant Forecast Miss: Missing the forecast by 18% is a substantial deviation, indicating that the current forecasting methods and tools may not be robust or sophisticated enough to provide accurate predictions.\n\n4. Use of Basic Tools: While the company uses Aviso for confidence scoring and scenario modeling, the reliance on manual data integration suggests that these tools are not yet fully leveraged or integrated into a comprehensive forecasting system.\n\nOverall, these factors point to Transform.ai being in the early stages of developing a mature forecasting process, as they are still addressing fundamental issues related to data integration, accuracy, and process automation."
+}
+so make sure this is formatted well and displayed professionally
+dont change css much just change the css for the ping msg as it shouldnt be dsiplayed as an actual msg just some constant timestamp text in the middle with less font
