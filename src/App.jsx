@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
 
@@ -32,6 +33,22 @@ function App() {
 
   const messagesEndRef = useRef(null)
 
+  // Format message content with proper markdown rendering
+  const formatMessageContent = (content) => {
+    if (typeof content !== 'string') return content;
+    
+    // Convert **bold** to <strong>
+    let formatted = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert *italic* to <em>
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Convert line breaks to <br>
+    formatted = formatted.replace(/\n/g, '<br>');
+    
+    return formatted;
+  }
+
   // Connect to WebSocket
   const connectWebSocket = () => {
     // Clear any existing connection
@@ -40,8 +57,17 @@ function App() {
     }
 
     try {
-      const wsUrl = 'ws://0.0.0.0:8002/halo/ws/1'
+      // Try multiple possible WebSocket URLs
+      const possibleUrls = [
+        'ws://localhost:8002/halo/ws/1',
+        'ws://127.0.0.1:8002/halo/ws/1',
+        'ws://0.0.0.0:8002/halo/ws/1'
+      ]
+      
+      const wsUrl = possibleUrls[0] // Start with localhost
       console.log('Attempting to connect to:', wsUrl)
+      setConnectionStatus('connecting')
+      
       const websocket = new WebSocket(wsUrl)
 
       websocket.onopen = () => {
@@ -68,11 +94,14 @@ function App() {
           // Handle regular responses
           if (response.status === 'success' && response.answer) {
             addMessage('assistant', response.answer, 'success')
+          } else if (response.message) {
+            addMessage('assistant', response.message)
           } else {
-            addMessage('assistant', response.message || event.data)
+            addMessage('assistant', event.data)
           }
           setIsLoading(false)
         } catch (error) {
+          console.error('Error parsing message:', error)
           addMessage('assistant', event.data)
           setIsLoading(false)
         }
@@ -83,7 +112,7 @@ function App() {
         console.log('WebSocket disconnected from:', wsUrl, 'Code:', event.code, 'Reason:', event.reason)
         
         // Don't auto-reconnect if it was a manual disconnect
-        if (event.code !== 1000) {
+        if (event.code !== 1000 && event.code !== 1001) {
           // Attempt to reconnect after 3 seconds
           reconnectTimeoutRef.current = setTimeout(() => {
             console.log('Attempting to reconnect...')
@@ -111,7 +140,7 @@ function App() {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
     }
-    if (ws) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
       ws.close(1000, 'Manual disconnect') // Use normal closure code
       setWs(null)
     }
@@ -187,9 +216,14 @@ function App() {
 
     console.log('Sending payload:', payload)
     // Send to WebSocket
-    ws.send(JSON.stringify(payload))
-    setIsLoading(true)
-    setInputMessage('')
+    try {
+      ws.send(JSON.stringify(payload))
+      setIsLoading(true)
+      setInputMessage('')
+    } catch (error) {
+      console.error('Error sending message:', error)
+      setIsLoading(false)
+    }
   }
 
   // Handle key press
@@ -244,6 +278,62 @@ function App() {
           </button>
         </div>
 
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="settings-panel">
+            <div className="settings-grid">
+              <label>
+                Tenant Name:
+                <input
+                  type="text"
+                  value={config.tenant_name}
+                  onChange={(e) => updateConfig('tenant_name', e.target.value)}
+                />
+              </label>
+              <label>
+                Stage:
+                <input
+                  type="text"
+                  value={config.stage}
+                  onChange={(e) => updateConfig('stage', e.target.value)}
+                />
+              </label>
+              <label>
+                Stage Type:
+                <input
+                  type="text"
+                  value={config.stage_type}
+                  onChange={(e) => updateConfig('stage_type', e.target.value)}
+                />
+              </label>
+              <label>
+                Meeting ID:
+                <input
+                  type="text"
+                  value={config.meeting_id}
+                  onChange={(e) => updateConfig('meeting_id', e.target.value)}
+                />
+              </label>
+              <label>
+                Text:
+                <textarea
+                  value={config.text}
+                  onChange={(e) => updateConfig('text', e.target.value)}
+                  rows="3"
+                />
+              </label>
+              <label>
+                Page Name:
+                <input
+                  type="text"
+                  value={config.page_name}
+                  onChange={(e) => updateConfig('page_name', e.target.value)}
+                />
+              </label>
+            </div>
+          </div>
+        )}
+
         <div className="chat-list">
           {chats.map(chat => (
             <div
@@ -263,12 +353,14 @@ function App() {
           <div className={`connection-status ${connectionStatus}`}>
             <div className="status-dot"></div>
             {connectionStatus === 'connected' ? 'Connected' :
+             connectionStatus === 'connecting' ? 'Connecting...' :
              connectionStatus === 'error' ? 'Connection Error' : 'Disconnected'}
           </div>
           <div className="connection-buttons">
             <button
               className="connect-btn"
               onClick={connectionStatus === 'connected' ? disconnectWebSocket : connectWebSocket}
+              disabled={connectionStatus === 'connecting'}
             >
               {connectionStatus === 'connected' ? 'Disconnect' : 'Connect'}
             </button>
@@ -276,152 +368,62 @@ function App() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Chat Area */}
       <div className="main-content">
-        <header className="header">
+        {/* Header */}
+        <div className="chat-header">
           <button
             className="sidebar-toggle"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             ☰
           </button>
-          <h1>Halo Chat</h1>
+          <h1>WebSocket Chat</h1>
+          
+          {/* Ping Status Box */}
           {pingTimestamp && (
-            <div className="ping-indicator">
-              <div className="ping-dot"></div>
-              <span className="ping-text">Last ping: {pingTimestamp}</span>
+            <div className="ping-status">
+              <span className="ping-dot"></span>
+              Last ping: {pingTimestamp}
             </div>
           )}
-        </header>
+        </div>
 
-        {/* Settings Panel */}
-        {showSettings && (
-          <div className="settings-panel">
-            <h3>Configuration</h3>
-            <div className="settings-grid">
-              <div className="setting-item">
-                <label>Type:</label>
-                <input
-                  value={config.type}
-                  onChange={(e) => updateConfig('type', e.target.value)}
+        {/* Messages Area */}
+        <div className="messages-container">
+          {currentMessages.map(message => (
+            <div key={message.id} className={`message ${message.sender}`}>
+              <div className={`message-content ${message.status || ''}`}>
+                {message.status === 'success' && (
+                  <div className="success-indicator">
+                    <span className="success-dot"></span>
+                    Success
+                  </div>
+                )}
+                <div 
+                  className="message-text"
+                  dangerouslySetInnerHTML={{
+                    __html: formatMessageContent(message.content)
+                  }}
                 />
-              </div>
-              <div className="setting-item">
-                <label>Tenant Name:</label>
-                <input
-                  value={config.tenant_name}
-                  onChange={(e) => updateConfig('tenant_name', e.target.value)}
-                />
-              </div>
-              <div className="setting-item">
-                <label>Stage:</label>
-                <input
-                  value={config.stage}
-                  onChange={(e) => updateConfig('stage', e.target.value)}
-                />
-              </div>
-              <div className="setting-item">
-                <label>Stage Type:</label>
-                <input
-                  value={config.stage_type}
-                  onChange={(e) => updateConfig('stage_type', e.target.value)}
-                />
-              </div>
-              <div className="setting-item">
-                <label>Meeting ID:</label>
-                <input
-                  value={config.meeting_id}
-                  onChange={(e) => updateConfig('meeting_id', e.target.value)}
-                />
-              </div>
-              <div className="setting-item">
-                <label>Page Name:</label>
-                <input
-                  value={config.page_name}
-                  onChange={(e) => updateConfig('page_name', e.target.value)}
-                />
-              </div>
-              <div className="setting-item full-width">
-                <label>Text Context:</label>
-                <textarea
-                  value={config.text}
-                  onChange={(e) => updateConfig('text', e.target.value)}
-                  rows="3"
-                />
+                <div className="message-time">
+                  {message.timestamp.toLocaleTimeString()}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Chat Area */}
-        <div className="chat-area">
-          {currentMessages.length === 0 ? (
-            <div className="empty-state">
-              <h2>What can I help with?</h2>
-              <p>Start a conversation by typing your question below.</p>
-            </div>
-          ) : (
-            <div className="messages">
-              {currentMessages.map(message => (
-                <div key={message.id} className={`message ${message.sender} ${message.status || ''}`}>
-                  <div className="message-content">
-                    <div className="message-text">
-                      {message.sender === 'assistant' ? (
-                        <div className="formatted-response">
-                          {message.content.split('\n').map((paragraph, index) => {
-                            if (paragraph.trim() === '') return <br key={index} />
-
-                            // Handle numbered lists
-                            if (/^\d+\./.test(paragraph.trim())) {
-                              const formattedText = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                              return (
-                                <div key={index} className="numbered-item" dangerouslySetInnerHTML={{ __html: formattedText }} />
-                              )
-                            }
-
-                            // Handle bullet points
-                            if (paragraph.trim().startsWith('- ') || paragraph.trim().startsWith('• ')) {
-                              const formattedText = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                              return (
-                                <div key={index} className="bullet-item" dangerouslySetInnerHTML={{ __html: formattedText }} />
-                              )
-                            }
-
-                            // Handle bold text with **
-                            const formattedText = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-
-                            return (
-                              <p key={index} dangerouslySetInnerHTML={{ __html: formattedText }} />
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        message.content
-                      )}
-                    </div>
-                    {message.sender === 'assistant' && message.status === 'success' && (
-                      <div className="status-indicator success"></div>
-                    )}
-                    <div className="message-time">
-                      {message.timestamp.toLocaleTimeString()}
-                    </div>
-                  </div>
+          ))}
+          {isLoading && (
+            <div className="message assistant">
+              <div className="message-content loading">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
                 </div>
-              ))}
-              {isLoading && (
-                <div className="message assistant">
-                  <div className="message-content">
-                    <div className="typing-indicator">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+              </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
