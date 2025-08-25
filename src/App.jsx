@@ -5,6 +5,7 @@ function App() {
   // WebSocket connection
   const [ws, setWs] = useState(null)
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
+  const [pingTimestamp, setPingTimestamp] = useState(null) // State to store the last ping timestamp
 
   // Chat state
   const [chats, setChats] = useState([])
@@ -48,9 +49,10 @@ function App() {
         try {
           const response = JSON.parse(event.data)
 
-          // Handle ping messages
+          // Handle ping messages - don't add to chat
           if (response.type === 'ping') {
-            addMessage('ping', `${new Date(response.timestamp * 1000).toLocaleTimeString()}`)
+            // Just update ping timestamp in state for display
+            setPingTimestamp(new Date(response.timestamp * 1000).toLocaleTimeString())
             return
           }
 
@@ -102,9 +104,10 @@ function App() {
         try {
           const response = JSON.parse(event.data)
 
-          // Handle ping messages
+          // Handle ping messages - don't add to chat
           if (response.type === 'ping') {
-            addMessage('ping', `${new Date(response.timestamp * 1000).toLocaleTimeString()}`)
+            // Just update ping timestamp in state for display
+            setPingTimestamp(new Date(response.timestamp * 1000).toLocaleTimeString())
             return
           }
 
@@ -285,6 +288,11 @@ function App() {
         </div>
 
         <div className="sidebar-footer">
+          <div className="ping-indicator">
+            {pingTimestamp && (
+              <>Last Ping: {pingTimestamp}</>
+            )}
+          </div>
           <div className={`connection-status ${connectionStatus}`}>
             {connectionStatus === 'connected' ? 'Connected' :
              connectionStatus === 'error' ? 'Error' : 'Disconnected'}
