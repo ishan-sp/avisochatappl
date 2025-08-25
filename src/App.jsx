@@ -8,6 +8,7 @@ function App() {
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
   const [pingTimestamp, setPingTimestamp] = useState(null)
   const reconnectTimeoutRef = useRef(null)
+  const keepAliveIntervalRef = useRef(null)
 
   // Chat state
   const [chats, setChats] = useState([])
@@ -71,6 +72,13 @@ function App() {
           clearTimeout(reconnectTimeoutRef.current)
           reconnectTimeoutRef.current = null
         }
+        
+        // Start keep-alive mechanism - send ping every 30 seconds
+        keepAliveIntervalRef.current = setInterval(() => {
+          if (websocket.readyState === WebSocket.OPEN) {
+            websocket.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }))
+          }
+        }, 30000)
       }
 
       websocket.onmessage = (event) => {
@@ -105,6 +113,12 @@ function App() {
         console.log('WebSocket disconnected. Code:', event.code, 'Reason:', event.reason)
         setIsLoading(false)
         
+        // Clear keep-alive interval
+        if (keepAliveIntervalRef.current) {
+          clearInterval(keepAliveIntervalRef.current)
+          keepAliveIntervalRef.current = null
+        }
+        
         // Auto-reconnect if not a manual disconnect
         if (event.code !== 1000 && event.code !== 1001) {
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -132,6 +146,10 @@ function App() {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
+    }
+    if (keepAliveIntervalRef.current) {
+      clearInterval(keepAliveIntervalRef.current)
+      keepAliveIntervalRef.current = null
     }
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.close(1000, 'Manual disconnect')
@@ -246,6 +264,9 @@ function App() {
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
+      }
+      if (keepAliveIntervalRef.current) {
+        clearInterval(keepAliveIntervalRef.current)
       }
       disconnectWebSocket()
     }
