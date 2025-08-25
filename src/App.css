@@ -349,6 +349,53 @@ body {
   display: none;
 }
 
+/* Ping message styling */
+.message.ping {
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.message.ping .message-content {
+  background: transparent;
+  border: none;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  opacity: 0.4;
+  max-width: 90%;
+  text-align: center;
+}
+
+.ping-timestamp {
+  font-style: italic;
+  color: #888888;
+  font-size: 10px;
+}
+
+/* Message status styling */
+.message-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.success {
+  background-color: #4ade80;
+}
+
+.status-text {
+  color: #4ade80;
+  font-weight: 500;
+}
+
 .message-text {
   line-height: 1.5;
   white-space: pre-wrap;
