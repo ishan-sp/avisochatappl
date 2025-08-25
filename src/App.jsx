@@ -103,6 +103,15 @@ function App() {
           setIsLoading(false)
         } catch (error) {
           console.error('Error parsing message:', error)
+          
+          // Check if it's a ping-related error message and ignore it
+          const messageStr = event.data.toString().toLowerCase()
+          if (messageStr.includes('unknown request type: ping') || 
+              messageStr.includes('ping') && messageStr.includes('error')) {
+            console.log('Ignoring ping-related error message')
+            return
+          }
+          
           addMessage('assistant', event.data)
           setIsLoading(false)
         }
