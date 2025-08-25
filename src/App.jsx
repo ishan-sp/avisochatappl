@@ -73,16 +73,26 @@ function App() {
           reconnectTimeoutRef.current = null
         }
         
-        // Start keep-alive mechanism - send ping every 30 seconds
+        // Start keep-alive mechanism - send ping every 45 seconds
         keepAliveIntervalRef.current = setInterval(() => {
           if (websocket.readyState === WebSocket.OPEN) {
             websocket.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }))
           }
-        }, 30000)
+        }, 45000)
       }
 
       websocket.onmessage = (event) => {
         console.log('Received message:', event.data)
+        
+        // Filter out ping-related error messages before processing
+        const messageStr = event.data.toString()
+        if (messageStr === 'Unknown request type: ping' || 
+            messageStr.toLowerCase().includes('unknown request type: ping') ||
+            (messageStr.toLowerCase().includes('ping') && messageStr.toLowerCase().includes('error'))) {
+          console.log('Ignoring ping-related error message:', messageStr)
+          return
+        }
+        
         try {
           const response = JSON.parse(event.data)
 
@@ -103,15 +113,6 @@ function App() {
           setIsLoading(false)
         } catch (error) {
           console.error('Error parsing message:', error)
-          
-          // Check if it's a ping-related error message and ignore it
-          const messageStr = event.data.toString().toLowerCase()
-          if (messageStr.includes('unknown request type: ping') || 
-              messageStr.includes('ping') && messageStr.includes('error')) {
-            console.log('Ignoring ping-related error message')
-            return
-          }
-          
           addMessage('assistant', event.data)
           setIsLoading(false)
         }
